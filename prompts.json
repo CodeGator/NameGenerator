@@ -1,0 +1,59 @@
+{
+  "prompts": [
+    {
+      "id": "band-names",
+      "name": "Band / artist names",
+      "prompt": "band or artist names"
+    },
+    {
+      "id": "business-names",
+      "name": "Business / company names",
+      "prompt": "business or company names"
+    },
+    {
+      "id": "color-names",
+      "name": "Color names",
+      "prompt": "color names"
+    },
+    {
+      "id": "character-fantasy",
+      "name": "Fantasy character names",
+      "prompt": "fantasy character names (first and last). Mix of elves, humans, dwarves."
+    },
+    {
+      "id": "game-names",
+      "name": "Game / app names",
+      "prompt": "video game or mobile app names"
+    },
+    {
+      "id": "pet-names",
+      "name": "Pet names",
+      "prompt": "pet names"
+    },
+    {
+      "id": "product-names",
+      "name": "Product names",
+      "prompt": "product names"
+    },
+    {
+      "id": "project-names",
+      "name": "Project names",
+      "prompt": "software or tech project names"
+    },
+    {
+      "id": "character-sci-fi",
+      "name": "Sci-fi character names",
+      "prompt": "sci-fi character names. Human and alien-sounding."
+    },
+    {
+      "id": "porn-names",
+      "name": "Space names",
+      "prompt": "names of planets, constellations, stars, moons, comets"
+    },
+    {
+      "id": "town-names",
+      "name": "Town names",
+      "prompt": "town or city names"
+    }
+  ]
+}
