@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import webbrowser
 import random
 import re
 import shutil
@@ -192,6 +193,8 @@ def _apply_theme(root: tk.Tk, theme: str) -> None:
         foreground="#ffffff",
     )
     style.map("Accent.TButton", background=[("active", accent_active), ("pressed", accent_active)])
+    # Link style: blue foreground for hyperlinks
+    style.configure("Link.TLabel", background=bg, foreground=accent_bg)
     style.configure("TEntry", fieldbackground=bg, foreground=fg)
     style.configure("TLabelframe", background=bg, foreground=fg)
     style.configure("TLabelframe.Label", background=bg, foreground=fg)
@@ -744,6 +747,13 @@ def run_app() -> None:
     row_about += 1
     ttk.Label(frame_about, text=f"Version {APP_VERSION}").grid(row=row_about, column=0, sticky="w", pady=(0, 4))
     row_about += 1
+
+    GITHUB_URL = "https://github.com/CodeGator/NameGenerator"
+    link_label = ttk.Label(frame_about, text="GitHub repository", cursor="hand2", style="Link.TLabel")
+    link_label.grid(row=row_about, column=0, sticky="w", pady=(0, 4))
+    link_label.bind("<Button-1>", lambda e: webbrowser.open(GITHUB_URL))
+    row_about += 1
+
     ttk.Label(frame_about, text=f"Copyright \u00a9 {copyright_years} {COPYRIGHT_OWNER}. All rights reserved.").grid(
         row=row_about, column=0, sticky="w", pady=(0, 4)
     )
