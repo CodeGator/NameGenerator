@@ -77,11 +77,12 @@ def list_models() -> list[str]:
 def generate_names(
     prompt_text: str,
     model: str = "llama2",
-    stream: bool = False,
+    stream: bool = True,
     temperature: float = 0.8,
 ) -> str:
     """
     Call Ollama to generate text from the given prompt.
+    Uses streaming by default so long-running models (e.g. reasoning models) don't time out.
     temperature: 0 = deterministic, higher = more varied (default 0.8 for different names each run).
     Uses repeat_penalty and top_p to reduce repetitive output.
     Returns the raw response text.
@@ -91,8 +92,18 @@ def generate_names(
         "repeat_penalty": 1.2,
         "top_p": 0.95,
     }
+    if stream:
+        gen = ollama.generate(
+            model=model, prompt=prompt_text, stream=True, options=options
+        )
+        parts = []
+        for chunk in gen:
+            r = chunk.get("response", "") if isinstance(chunk, dict) else getattr(chunk, "response", "")
+            if r:
+                parts.append(r)
+        return "".join(parts)
     return ollama.generate(
-        model=model, prompt=prompt_text, stream=stream, options=options
+        model=model, prompt=prompt_text, stream=False, options=options
     )["response"]
 
 

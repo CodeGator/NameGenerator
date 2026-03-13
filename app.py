@@ -168,6 +168,32 @@ def _save_selected_prompt(prompt_name: str) -> None:
     _write_app_config({"selected_prompt": prompt_name})
 
 
+DEFAULT_EXCLUDED_MODEL_SUBSTRINGS = ["reasoning"]
+
+
+def _load_excluded_model_substrings() -> list[str]:
+    """Load excluded model substrings from config. Returns list (may be empty)."""
+    raw = _read_app_config().get("excluded_model_substrings")
+    if raw is None:
+        return list(DEFAULT_EXCLUDED_MODEL_SUBSTRINGS)
+    if isinstance(raw, list) and all(isinstance(x, str) for x in raw):
+        return [s.strip() for s in raw if s and isinstance(s, str)]
+    return list(DEFAULT_EXCLUDED_MODEL_SUBSTRINGS)
+
+
+def _save_excluded_model_substrings(substrings: list[str]) -> None:
+    """Save excluded model substrings to config."""
+    _write_app_config({"excluded_model_substrings": [s.strip() for s in substrings if s.strip()]})
+
+
+def _filter_supported_models(model_names: list[str]) -> list[str]:
+    """Return model list with unsupported models (e.g. reasoning) excluded."""
+    excluded = _load_excluded_model_substrings()
+    if not excluded:
+        return model_names
+    return [m for m in model_names if not any(s in m.lower() for s in excluded)]
+
+
 def _load_selected_model() -> str | None:
     """Load saved AI model from config. Returns None if not set or invalid."""
     return _read_app_config().get("selected_model") or None
@@ -447,6 +473,53 @@ def _names_result_window(
     _center_over_parent(win, parent, 360, 370)
 
 
+def _block_list_editor_dialog(
+    parent: tk.Tk | tk.Toplevel,
+    current_substrings: list[str],
+) -> list[str] | None:
+    """Show a dialog to edit excluded model substrings (one per line). Returns new list or None if cancelled."""
+    result: list[str] | None = None
+
+    win = tk.Toplevel(parent)
+    win.title("Edit model block list")
+    win.transient(parent)
+    win.grab_set()
+    win.geometry("400x220")
+
+    f = ttk.Frame(win, padding=10)
+    f.pack(fill=tk.BOTH, expand=True)
+    ttk.Label(
+        f,
+        text="Model names containing any of these substrings are hidden from the AI model list.\nOne substring per line (case-insensitive):",
+    ).grid(row=0, column=0, sticky="w", pady=(0, 4))
+    text = tk.Text(f, wrap=tk.WORD, width=48, height=8)
+    text.insert("1.0", "\n".join(current_substrings))
+    text.grid(row=1, column=0, sticky="nsew", pady=(0, 8))
+    f.columnconfigure(0, weight=1)
+    f.rowconfigure(1, weight=1)
+
+    def ok():
+        nonlocal result
+        lines = text.get("1.0", tk.END).strip().splitlines()
+        result = [s.strip() for s in lines if s.strip()]
+        win.destroy()
+
+    def cancel():
+        win.destroy()
+
+    btns = ttk.Frame(win)
+    btns.pack(fill=tk.X, padx=10, pady=(0, 10))
+    ttk.Button(btns, text="OK", width=BTN_WIDTH, command=ok).pack(side=tk.RIGHT, padx=4)
+    ttk.Button(btns, text="Cancel", width=BTN_WIDTH, command=cancel).pack(side=tk.RIGHT)
+
+    win.protocol("WM_DELETE_WINDOW", cancel)
+    text.focus_set()
+    _apply_theme_to_window(win)
+    _center_over_parent(win, parent, 400, 220)
+    win.wait_window()
+    return result
+
+
 def _manage_prompts_window(
     parent: tk.Tk | tk.Toplevel,
     prompts: list[dict],
@@ -579,7 +652,7 @@ def run_app() -> None:
     initial_theme = _load_theme()
     _apply_theme(root, initial_theme)
 
-    models = list_models()
+    models = _filter_supported_models(list_models())
     status_msg = "Select a prompt and click Generate."
     if not models:
         status_msg = "No models found. Go to Options tab, start Ollama, and click Refresh."
@@ -814,7 +887,7 @@ def run_app() -> None:
     model_var.trace_add("write", on_model_change)
 
     def refresh_models():
-        new_models = list_models()
+        new_models = _filter_supported_models(list_models())
         model_combo["values"] = new_models if new_models else ["llama2"]
         if new_models and model_var.get() not in new_models:
             model_var.set(new_models[0])
@@ -830,9 +903,23 @@ def run_app() -> None:
     )
     frame_options.columnconfigure(0, weight=1)
 
+    def open_block_list_editor():
+        current = _load_excluded_model_substrings()
+        new_list = _block_list_editor_dialog(root, current)
+        if new_list is not None:
+            _save_excluded_model_substrings(new_list)
+            refresh_models()
+
+    block_list_row = ttk.Frame(frame_options)
+    block_list_row.grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 4))
+    ttk.Label(block_list_row, text="Excluded from model list:").pack(side=tk.LEFT)
+    ttk.Button(block_list_row, text="Edit block list", width=BTN_WIDTH, command=open_block_list_editor).pack(
+        side=tk.LEFT, padx=(8, 0)
+    )
+
     creativity_var = tk.DoubleVar(value=0.8)
     creativity_row = ttk.Frame(frame_options)
-    creativity_row.grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 4))
+    creativity_row.grid(row=5, column=0, columnspan=2, sticky="w", pady=(12, 4))
     ttk.Label(creativity_row, text="Creativity (variation between runs):").pack(side=tk.LEFT)
     creativity_label = ttk.Label(creativity_row, text="0.8")
     creativity_label.pack(side=tk.LEFT, padx=(4, 0))
@@ -849,14 +936,14 @@ def run_app() -> None:
         orient=tk.HORIZONTAL,
         variable=creativity_var,
         command=on_creativity_change,
-    ).grid(row=5, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+    ).grid(row=6, column=0, columnspan=2, sticky="ew", pady=(0, 8))
 
     ttk.Label(frame_options, text="Negative prompt (what to avoid):").grid(
-        row=7, column=0, columnspan=2, sticky="w", pady=(12, 4)
+        row=8, column=0, columnspan=2, sticky="w", pady=(12, 4)
     )
     neg_frame = ttk.Frame(frame_options)
-    neg_frame.grid(row=8, column=0, columnspan=2, sticky="nsew", pady=(0, 0))
-    frame_options.rowconfigure(8, weight=1)
+    neg_frame.grid(row=9, column=0, columnspan=2, sticky="nsew", pady=(0, 0))
+    frame_options.rowconfigure(9, weight=1)
     neg_frame.columnconfigure(0, weight=1)
     neg_frame.rowconfigure(0, weight=1)
     neg_scroll = ttk.Scrollbar(neg_frame)
