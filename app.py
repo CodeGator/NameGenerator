@@ -63,7 +63,7 @@ def _migrate_config_from_project() -> None:
 _migrate_config_from_project()
 
 APP_NAME = "Name Generator"
-APP_VERSION = "1.0"
+APP_VERSION = "1.1"
 COPYRIGHT_OWNER = "CodeGator"
 COPYRIGHT_YEAR_START = 2002
 LOGO_PATH = _app_base_path() / "resources" / "codegator-167x79.png"
@@ -166,6 +166,16 @@ def _load_selected_prompt() -> str | None:
 def _save_selected_prompt(prompt_name: str) -> None:
     """Save selected prompt name to config file."""
     _write_app_config({"selected_prompt": prompt_name})
+
+
+def _load_selected_model() -> str | None:
+    """Load saved AI model from config. Returns None if not set or invalid."""
+    return _read_app_config().get("selected_model") or None
+
+
+def _save_selected_model(model: str) -> None:
+    """Save selected AI model to config file."""
+    _write_app_config({"selected_model": model})
 
 
 def _apply_theme(root: tk.Tk, theme: str) -> None:
@@ -780,7 +790,11 @@ def run_app() -> None:
     theme_var.trace_add("write", on_theme_change)
 
     ttk.Label(frame_options, text="AI model:").grid(row=2, column=0, columnspan=2, sticky="w", pady=(0, 4))
-    default_model = models[0] if models else "llama2"
+    saved_model = _load_selected_model()
+    model_choices = models if models else ["llama2"]
+    default_model = (
+        saved_model if saved_model and saved_model in model_choices else (models[0] if models else "llama2")
+    )
     model_var = tk.StringVar(value=default_model)
     model_combo = ttk.Combobox(
         frame_options,
@@ -791,6 +805,13 @@ def run_app() -> None:
     )
     model_combo.grid(row=3, column=0, sticky="ew", pady=(0, 4))
     model_combo["postcommand"] = lambda: root.after(COMBOBOX_STYLE_DELAY_MS, lambda: _style_combobox_dropdowns(root))
+
+    def on_model_change(*_):
+        m = model_var.get().strip()
+        if m:
+            _save_selected_model(m)
+
+    model_var.trace_add("write", on_model_change)
 
     def refresh_models():
         new_models = list_models()
@@ -1000,6 +1021,7 @@ def run_app() -> None:
     def on_closing():
         save_negative_prompt()
         _save_selected_prompt(prompt_var.get().strip())
+        _save_selected_model(model_var.get().strip())
         root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_closing)

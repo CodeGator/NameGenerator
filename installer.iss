@@ -2,7 +2,7 @@
 ; Requires: Inno Setup 6, and dist\NameGenerator.exe (run "pyinstaller NameGenerator.spec" first)
 
 #define MyAppName "Name Generator"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.1"
 #define MyAppPublisher "CodeGator"
 #define MyAppExeName "NameGenerator.exe"
 
